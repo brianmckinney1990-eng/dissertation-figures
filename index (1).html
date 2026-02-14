@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dissertation Interactive Figures — Brian Landreth</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #FAFAF8;
+    --text: #1a1a1a;
+    --muted: #666;
+    --border: #e0e0e0;
+    --accent: #2a5a3a;
+    --accent-light: #f0f5f1;
+    --card-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --card-hover: 0 6px 24px rgba(0,0,0,0.10);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 3rem 1.5rem;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    font-family: 'Crimson Pro', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 0.75rem;
+  }
+
+  header .subtitle {
+    font-size: 0.95rem;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  header .author {
+    margin-top: 1rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .section-label {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    margin-top: 2.5rem;
+  }
+
+  .section-label:first-of-type { margin-top: 0; }
+
+  .figure-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .figure-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
+  }
+
+  .figure-card:hover {
+    box-shadow: var(--card-hover);
+    transform: translateY(-2px);
+    border-color: var(--accent);
+  }
+
+  .figure-card .card-top {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .figure-card .fig-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: white;
+    background: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .figure-card .fig-title {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .figure-card .fig-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-top: 0.35rem;
+  }
+
+  .figure-card .fig-meta {
+    font-size: 0.72rem;
+    color: #999;
+    margin-top: 0.6rem;
+    font-weight: 500;
+  }
+
+  .placeholder {
+    background: var(--accent-light);
+    border: 1px dashed #b8ccbc;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    opacity: 0.7;
+  }
+
+  .placeholder .fig-title { color: var(--muted); }
+  .placeholder .fig-label { background: #999; }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: #999;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 2rem 1rem; }
+    header h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Interactive Dissertation Figures</h1>
+    <p class="subtitle">
+      Supplementary interactive visualizations for
+      <em>Contemplative Pedagogy and International Students' Perezhivaniya During First-Semester Study Abroad</em>
+    </p>
+    <p class="author">Brian Landreth &middot; Oklahoma State University &middot; Applied Linguistics / TESOL</p>
+  </header>
+
+  <div class="section-label">Chapter 4 — Cross-Case Findings</div>
+  <div class="figure-grid">
+
+    <a href="john-plutchik.html" class="figure-card">
+      <div class="card-top">
+        <span class="fig-label">Fig.</span>
+        <span class="fig-title">John's Perezhivaniya on Plutchik's Wheel</span>
+      </div>
+      <p class="fig-desc">18 perezhivaniya mapped by emotion type and intensity. Click bubbles for source context and extended quotes.</p>
+      <p class="fig-meta">Interactive &middot; Plutchik's Wheel &middot; 18 data points</p>
+    </a>
+
+    <!-- ═══ PLACEHOLDERS — replace hrefs as you build each figure ═══ -->
+
+    <div class="figure-card placeholder">
+      <div class="card-top">
+        <span class="fig-label">Fig.</span>
+        <span class="fig-title">John's Developmental Wave Timeline</span>
+      </div>
+      <p class="fig-desc">Coming soon</p>
+    </div>
+
+    <div class="figure-card placeholder">
+      <div class="card-top">
+        <span class="fig-label">Fig.</span>
+        <span class="fig-title">Cross-Case Emotion Distribution</span>
+      </div>
+      <p class="fig-desc">Coming soon</p>
+    </div>
+
+    <!-- Add more figure cards here as you build them -->
+
+  </div>
+
+  <footer>
+    These interactive figures supplement the dissertation document. Data have been pseudonymized.<br>
+    &copy; 2026 Brian Landreth. All rights reserved.
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>John — Perezhivaniya on Plutchik's Wheel (v5)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#FAFAF8; font-family:'DM Sans',sans-serif; color:#1a1a1a; padding:16px; overflow-x:hidden; }
+  .page-header { text-align:center; max-width:900px; margin:0 auto 10px; }
+  .page-header h1 { font-family:'Crimson Pro',serif; font-size:1.4rem; font-weight:700; margin-bottom:3px; }
+  .page-header p { font-size:0.74rem; color:#555; }
+  .scale-outer { width:100%; overflow:hidden; }
+  .wheel-wrap { position:relative; width:1560px; height:1560px; margin:0 auto; }
+  .wheel-svg { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:1040px; height:1040px; }
+  .bubble { position:absolute; width:215px; height:130px; overflow:hidden; background:white; border:1px solid #e0e0e0; border-radius:8px; padding:7px 9px; box-shadow:0 2px 8px rgba(0,0,0,0.06); font-size:0.7rem; line-height:1.4; transition:box-shadow 0.2s, height 0.25s ease; cursor:pointer; z-index:1; }
+  .bubble:hover { box-shadow:0 4px 16px rgba(0,0,0,0.12); }
+  .bubble.expanded { height:auto !important; overflow:visible; box-shadow:0 6px 24px rgba(0,0,0,0.15); z-index:20; }
+  .bubble .b-head { display:flex; align-items:center; gap:5px; margin-bottom:4px; }
+  .bubble .b-num { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.58rem; font-weight:700; color:white; flex-shrink:0; }
+  .bubble .b-src { font-size:0.6rem; color:#999; font-weight:500; }
+  .bubble .b-quote { font-family:'Crimson Pro',serif; font-style:italic; font-size:0.74rem; line-height:1.35; color:#333; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .bubble.expanded .b-quote { -webkit-line-clamp:unset; overflow:visible; }
+  .bubble .b-emo { margin-top:4px; font-size:0.58rem; font-weight:600; color:#666; }
+  .bubble .b-dyad { font-style:italic; color:#888; font-size:0.56rem; }
+  .bubble .b-context { display:none; margin-top:6px; padding-top:6px; border-top:1px solid #eee; font-size:0.65rem; line-height:1.5; color:#444; }
+  .bubble .b-context .ctx-quote { font-family:'Crimson Pro',serif; font-style:italic; font-size:0.72rem; color:#333; line-height:1.5; }
+  .bubble.expanded .b-context { display:block; }
+  .bubble .b-hint { margin-top:6px; font-size:0.65rem; color:#888; text-align:right; font-weight:500; letter-spacing:0.02em; }
+  .bubble.expanded .b-hint { display:none; }
+  .connector-svg { position:absolute; left:0; top:0; width:1560px; height:1560px; pointer-events:none; }
+</style>
+</head>
+<body>
+<div class="page-header">
+  <h1>John&#x2019;s Perezhivaniya on Plutchik&#x2019;s Wheel of Emotions</h1>
+  <p>18 perezhivaniya &#x00b7; Radial position = intensity (center = high, edge = low) &#x00b7; Click bubbles for context</p>
+</div>
+<div class="scale-outer" id="scaleOuter"><div class="wheel-wrap" id="wheelWrap">
+  <svg class="wheel-svg" id="wheelSvg" viewBox="0 0 700 700"></svg>
+  <svg class="connector-svg" id="connSvg" viewBox="0 0 1560 1560"></svg>
+</div></div>
+<script>
+const SVG_NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('wheelSvg');
+const connSvg=document.getElementById('connSvg');
+const wrap=document.getElementById('wheelWrap');
+const WCX=350,WCY=350;
+
+function svgEl(ns,tag,attrs){const el=document.createElementNS(SVG_NS,tag);for(const[k,v]of Object.entries(attrs))el.setAttribute(k,v);return el;}
+function polarW(deg,r){const rad=deg*Math.PI/180;return[WCX+r*Math.cos(rad),WCY-r*Math.sin(rad)];}
+
+// ── PROPER SECTOR GEOMETRY ──
+// Each emotion = 45° wedge. Three concentric rings per sector.
+const R1=80, R2=170, R3=280; // ring boundaries
+const ANGULAR_GAP=0.4; // degrees gap between sectors
+
+function sectorPath(rInner, rOuter, startDeg, endDeg) {
+  const s=startDeg*Math.PI/180, e=endDeg*Math.PI/180;
+  const x1o=WCX+rOuter*Math.cos(s), y1o=WCY-rOuter*Math.sin(s);
+  const x2o=WCX+rOuter*Math.cos(e), y2o=WCY-rOuter*Math.sin(e);
+  if(rInner===0){
+    return`M ${WCX} ${WCY} L ${x1o} ${y1o} A ${rOuter} ${rOuter} 0 0 0 ${x2o} ${y2o} Z`;
+  }
+  const x1i=WCX+rInner*Math.cos(e), y1i=WCY-rInner*Math.sin(e);
+  const x2i=WCX+rInner*Math.cos(s), y2i=WCY-rInner*Math.sin(s);
+  return`M ${x2i} ${y2i} L ${x1o} ${y1o} A ${rOuter} ${rOuter} 0 0 0 ${x2o} ${y2o} L ${x1i} ${y1i} A ${rInner} ${rInner} 0 0 1 ${x2i} ${y2i} Z`;
+}
+
+const EMOTIONS=[
+  {name:'joy',angle:90,high:'#C6A700',med:'#E6C200',low:'#FFE94D',hN:'ecstasy',mN:'joy',lN:'serenity'},
+  {name:'trust',angle:45,high:'#4A6B10',med:'#6B8E23',low:'#98B84D',hN:'admiration',mN:'trust',lN:'acceptance'},
+  {name:'fear',angle:0,high:'#145A14',med:'#228B22',low:'#4CAF50',hN:'terror',mN:'fear',lN:'apprehension'},
+  {name:'surprise',angle:315,high:'#3A8AB0',med:'#5AAFC8',low:'#8DD0E0',hN:'amazement',mN:'surprise',lN:'distraction'},
+  {name:'sadness',angle:270,high:'#0A5AB5',med:'#1E7FDD',low:'#64AAEE',hN:'grief',mN:'sadness',lN:'pensiveness'},
+  {name:'disgust',angle:225,high:'#483D8B',med:'#6A5ACD',low:'#8F82D9',hN:'loathing',mN:'disgust',lN:'boredom'},
+  {name:'anger',angle:180,high:'#CC2200',med:'#EE4422',low:'#FF7755',hN:'rage',mN:'anger',lN:'annoyance'},
+  {name:'anticipation',angle:135,high:'#CC6A00',med:'#EE8811',low:'#FFAA44',hN:'vigilance',mN:'anticipation',lN:'interest'},
+];
+const DYADS=[
+  {name:'love',b:[0,1]},{name:'submission',b:[1,2]},
+  {name:'awe',b:[2,3]},{name:'disapproval',b:[3,4]},
+  {name:'remorse',b:[4,5]},{name:'contempt',b:[5,6]},
+  {name:'aggressiveness',b:[6,7]},{name:'optimism',b:[7,0]},
+];
+const emoMap={};EMOTIONS.forEach(e=>emoMap[e.name]=e);
+
+// Draw sectors
+EMOTIONS.forEach(e=>{
+  const s=e.angle-22.5+ANGULAR_GAP, end=e.angle+22.5-ANGULAR_GAP;
+  svg.appendChild(svgEl(SVG_NS,'path',{d:sectorPath(R2,R3,s,end),fill:e.low,stroke:'rgba(255,255,255,0.6)','stroke-width':'1'}));
+  svg.appendChild(svgEl(SVG_NS,'path',{d:sectorPath(R1,R2,s,end),fill:e.med,stroke:'rgba(255,255,255,0.6)','stroke-width':'1'}));
+  svg.appendChild(svgEl(SVG_NS,'path',{d:sectorPath(0,R1,s,end),fill:e.high,stroke:'rgba(255,255,255,0.7)','stroke-width':'0.7'}));
+});
+
+// Center decoration
+svg.appendChild(svgEl(SVG_NS,'circle',{cx:WCX,cy:WCY,r:'10',fill:'#2a2a2a',opacity:'0.7'}));
+
+// Ring boundary lines (subtle)
+[R1,R2].forEach(r=>{
+  svg.appendChild(svgEl(SVG_NS,'circle',{cx:WCX,cy:WCY,r:r,fill:'none',stroke:'rgba(255,255,255,0.4)','stroke-width':'0.5'}));
+});
+
+// ============================================================
+// DATA — 18 perezhivaniya  (rendered BEFORE labels so labels stay on top)
+// ============================================================
+const JOHN=[
+  {id:1,src:'IC2, Wk 4',q:'\u201cMaybe I put too much pressure on the first time\u2026\u201d',
+   emos:[{e:'fear',l:'Overwhelmed'}],pri:'fear',ox:594,oy:407,
+   ctxTitle:'Excerpt 1: \u201cToo Much Pressure\u201d',
+   ctxFrame:'In IC2, John described oscillating between excessive pressure and excessive relaxation around his first exam.',
+   ctxQuote:'\u201cMaybe I put too much pressure on the first time, but after the outcome that I could relax myself\u2026 when I put myself in a condition of, with lots of relaxation, it won\u2019t be good as well.\u201d'},
+
+  {id:2,src:'IC2, Wk 4',q:'Night of anxiety \u2014 couldn\u2019t sleep until 6am',
+   emos:[{e:'fear',l:'Anxious'}],pri:'fear',ox:491,oy:432,
+   ctxTitle:'\u201cSleepless Night\u201d',
+   ctxFrame:'Also in IC2, John contrasted a night of acute anxiety with a night after breath regulation practice.',
+   ctxQuote:'He described a night of anxiety where he could not fall asleep until six in the morning, contrasted with a night after breath regulation practice where he fell asleep by eleven.'},
+
+  {id:3,src:'CO 7.2, Wk 7',q:'\u201cWhen a person can stay calm, they can organize\u2026\u201d',
+   emos:[{e:'trust',l:'Calm'}],pri:'trust',ox:622,oy:257,
+   ctxTitle:'Excerpt 2: \u201cA Clear Mind\u201d',
+   ctxFrame:'Following the first guided breathing practice in CO 7.2, John spontaneously theorized the link between somatic regulation and linguistic production.',
+   ctxQuote:'\u201cWhen a person can stay calm, they can organize what they are going to say. And have a clear mind\u2026 Organize your thoughts. And make your own idea. Talk about it in your own way.\u201d'},
+
+  {id:4,src:'RJ8, Wk 8',q:'\u201cI was afraid\u2026 adjusted my breath\u2026 completed smoothly\u201d',
+   emos:[{e:'fear',l:'Afraid \u2192 Calm'}],pri:'fear',sec:'trust',shift:true,ox:567,oy:396,
+   ctxTitle:'Figure 1: \u201cShaking with Nervousness\u201d',
+   ctxFrame:'In RJ8, John narrated visiting the registrar\u2019s office alone for a high-stakes L2 bureaucratic task.',
+   ctxQuote:'\u201cI was afraid of using inappropriate words\u2026 Therefore, I adjusted my breath, relaxed my body\u2026 completed everything smoothly, without feeling anxious.\u201d'},
+
+  {id:5,src:'RJ8 fig., Wk 8',q:'\u201cenergy and comfort in my body\u2026 more satisfied\u201d',
+   emos:[{e:'trust',l:'Satisfied'}],pri:'trust',ox:596,oy:193,
+   ctxTitle:'RJ8 Figure: Somatic Satisfaction',
+   ctxFrame:'In the handwritten RJ8 figure, John documented the embodied result of his self-regulatory practice.',
+   ctxQuote:'\u201cenergy and comfort in my body\u2026 more satisfied about going to school.\u201d'},
+
+  {id:6,src:'CO 14.2, Wk 14',q:'\u201cvote for our own idea\u2026 by our own selves\u201d',
+   emos:[{e:'anticipation',l:'Hopeful'}],pri:'anticipation',dyad:'Optimism',ox:290,oy:206,
+   ctxTitle:'Excerpt 4: \u201cOur Own Idea\u201d',
+   ctxFrame:'By CO 14.2, John produced extended oral discourse without notes, a sustained civic argument about student agency.',
+   ctxQuote:'\u201cWe can control that by propose any ideas\u2026 vote for our own idea, vote for our own opinion. About specific things that can be controlled by our own selves.\u201d'},
+
+  {id:7,src:'CO 14.2, Wk 14',q:'\u201cslightly restrained\u2026 we don\u2019t have lots of rights\u201d',
+   emos:[{e:'fear',l:'Helpless'}],pri:'fear',ox:724,oy:451,
+   ctxTitle:'Excerpt 4 (cont.): Structural Inequality',
+   ctxFrame:'Within the same argument, John acknowledged structural constraints with remarkably precise hedging.',
+   ctxQuote:'\u201cBecause we are international students and we don\u2019t have lots of rights or authority to live here. We are slightly restrained for specific things that we cannot control.\u201d'},
+
+  {id:8,src:'FI, 5 mo. post',q:'\u201cHow should I possess a stable mindset\u2026\u201d',
+   emos:[{e:'trust',l:'Thoughtful'}],pri:'trust',ox:557,oy:191,
+   ctxTitle:'Anticipatory Self-Regulation',
+   ctxFrame:'In the FI, John described sitting alone, thinking through future plans and equanimity.',
+   ctxQuote:'\u201cWhat I\u2019m going to do for next week\u2026 How should I possess a stable mindset to encounter all the difficulties that I might face?\u201d'},
+
+  {id:9,src:'FI, 5 mo. post',q:'\u201cgrab a coffee\u2026 clean my room\u2026 clean my mind\u201d',
+   emos:[{e:'trust',l:'Calm'}],pri:'trust',ox:661,oy:268,
+   ctxTitle:'Ecology of Informal Strategies',
+   ctxFrame:'John described everyday self-regulatory strategies dispersed from formal practice.',
+   ctxQuote:'\u201cSometimes if I feel like I need to chill myself down, I\u2019ll just grab a coffee and look out the window\u2026\u201d When asked what that accomplished: \u201cJust clean my mind.\u201d'},
+
+  {id:10,src:'FI, 5 mo. post',q:'\u201cthis is reality\u2026 I have some power to make a change\u201d',
+   emos:[{e:'anticipation',l:'Confident'}],pri:'anticipation',ox:311,oy:323,
+   ctxTitle:'Excerpt 5: \u201cThis is Reality\u201d',
+   ctxFrame:'John connected mindful presence directly to agency, the capacity for acting rather than dwelling on the past.',
+   ctxQuote:'\u201cWhen we\u2019re present with it, we say, okay, this is reality. This is the current situation. I have some power to make a change here.\u201d'},
+
+  {id:11,src:'FI, 5 mo. post',q:'\u201cspeaking slowly\u2026 represents your temper and lifestyle\u201d',
+   emos:[{e:'sadness',l:'Pensive'}],pri:'sadness',ox:440,oy:700,
+   ctxTitle:'L2 Communication as Philosophical Reflection',
+   ctxFrame:'John linked speaking slowly to mindfulness, connecting L2 quality to self-presentation.',
+   ctxQuote:'\u201cI think especially speaking slowly, because it represents your temper and your lifestyle and the way that you act.\u201d'},
+
+  {id:12,src:'RJ12, Wk 12',q:'\u201cthe happy tears dropping down\u2026 I made it\u201d',
+   emos:[{e:'anticipation',l:'Proud'},{e:'joy',l:'Happy'}],pri:'anticipation',sec:'joy',dyad:'Optimism',ox:401,oy:376,
+   ctxTitle:'The Strongest Perezhivanie in the Dataset',
+   ctxFrame:'In RJ12, John looked back across a semester and recognized, with embodied intensity, that he had changed.',
+   ctxQuote:'\u201cI felt a sense of pride\u2026 It was not sobbing, but the happy tears dropping down instead. I recall all the memories, confidently telling myself, \u2018I made it.\u2019\u201d'},
+
+  {id:13,src:'RJ12, Wk 12',q:'\u201cmanaging time is not a challenge\u2026 a calm mind\u201d',
+   emos:[{e:'trust',l:'Calm'}],pri:'trust',ox:529,oy:320,
+   ctxTitle:'Reconceptualization',
+   ctxFrame:'John credited mindfulness and instructor conversations as catalysts for a philosophical shift.',
+   ctxQuote:'\u201cIt was a sudden moment that I realized: managing time is not a challenge, the importance lies in having a calm mind, strong patience, and the way I see my life.\u201d'},
+
+  {id:14,src:'RJ12, Wk 12',q:'\u201cfeedback\u2026 getting more encouraging\u201d',
+   emos:[{e:'anticipation',l:'Encouraged'}],pri:'anticipation',ox:206,oy:290,
+   ctxTitle:'Naming the Feedback Arc',
+   ctxFrame:'John named the dialogic mechanism retrospectively, tracking how instructor comments shifted.',
+   ctxQuote:'\u201cI took every feedback and comment carefully. Gradually, I found out that the feedback that I received was getting more encouraging.\u201d'},
+
+  {id:15,src:'RJ12 fig.',q:'\u201chappier and more energetic\u2026 glad and blessed\u201d',
+   emos:[{e:'joy',l:'Happy'},{e:'anticipation',l:'Grateful'}],pri:'joy',sec:'anticipation',dyad:'Optimism',ox:444,oy:265,
+   ctxTitle:'Figure 2: Gratitude and Vitality',
+   ctxFrame:'In the RJ12 figure, John documented gratitude and vitality from the semester.',
+   ctxQuote:'\u201cthe happier and more energetic that I felt. Therefore, I was glad and blessed to have the opportunity to take part in this class.\u201d'},
+
+  {id:16,src:'RJ12 fig.',q:'\u201cconfidence\u2026 I have grown up\u2026 believe in myself\u201d',
+   emos:[{e:'anticipation',l:'Confident'},{e:'trust',l:'Calm'}],pri:'anticipation',sec:'trust',ox:343,oy:319,
+   ctxTitle:'Figure 2 (cont.): Developmental Self-Awareness',
+   ctxFrame:'John articulated his developmental trajectory in his own terms.',
+   ctxQuote:'\u201cconfidence to assume that I have grown up. I keep calm when addressing issues, stay clear when getting into trouble, and believe in myself more.\u201d'},
+
+  {id:17,src:'RJ12, Wk 12',q:'\u201ctreat myself, take care of myself, and love myself\u201d',
+   emos:[{e:'trust',l:'Loving'}],pri:'trust',sec:'joy',dyad:'Love',ox:466,oy:373,
+   ctxTitle:'Self-Compassion as Culminating Insight',
+   ctxFrame:'John\u2019s culminating insight, arrived at through the dialogic process, not prescribed.',
+   ctxQuote:'\u201cI\u2019ve gotten to know how to better treat myself, take care of myself, and love myself.\u201d Comment 5: \u201cCompassion for others always starts with self-compassion.\u201d'},
+
+  {id:18,src:'RJ12 fig.',q:'\u201ca mind of peace and calm\u2026 gratitude and thankfulness\u201d',
+   emos:[{e:'trust',l:'Peaceful'},{e:'anticipation',l:'Grateful'}],pri:'trust',sec:'anticipation',ox:631,oy:206,
+   ctxTitle:'Figure 2 (cont.): Mind-Body Integration',
+   ctxFrame:'John synthesized mind-body unity into a tripartite formulation.',
+   ctxQuote:'\u201ca mind of peace and calm, a body of energy and resilience, and a brain of clarity and wisdom. Finally, the gratitude and thankfulness\u2026 have made me a better individual.\u201d'},
+];
+
+JOHN.forEach(item=>{item.wx=(item.ox/860)*700;item.wy=(item.oy/860)*700;});
+
+// DATA POINTS
+const PR=6.5;
+JOHN.forEach(item=>{
+  const px=item.wx,py=item.wy,emo=emoMap[item.pri],fill=emo.med;
+  const g=svgEl(SVG_NS,'g',{style:'cursor:pointer'});
+  g.appendChild(svgEl(SVG_NS,'circle',{cx:px,cy:py+1,r:PR+1,fill:'rgba(0,0,0,0.08)'}));
+  const dot=svgEl(SVG_NS,'circle',{cx:px,cy:py,r:PR,fill,stroke:'white','stroke-width':'1.5'});
+  g.appendChild(dot);
+  const numEl=svgEl(SVG_NS,'text',{x:px,y:py+0.5,'text-anchor':'middle','dominant-baseline':'central','font-family':'DM Sans','font-size':'6.5','font-weight':'700',fill:'white','pointer-events':'none'});
+  numEl.textContent=item.id;g.appendChild(numEl);
+  g.addEventListener('mouseenter',()=>{dot.setAttribute('r',PR+2);});
+  g.addEventListener('mouseleave',()=>{dot.setAttribute('r',PR);});
+  svg.appendChild(g);
+});
+
+// SECTOR & DYAD LABELS — rendered AFTER dots so they appear on top
+// Each label gets a halo (thick white stroke behind) for readability over dots
+const LABEL_R={high:42,med:125,low:230};
+EMOTIONS.forEach(e=>{
+  [{t:e.hN,r:LABEL_R.high,f:'rgba(255,255,255,0.95)',halo:'rgba(0,0,0,0.3)'},{t:e.mN,r:LABEL_R.med,f:'rgba(255,255,255,0.9)',halo:'rgba(0,0,0,0.25)'},{t:e.lN,r:LABEL_R.low,f:'rgba(0,0,0,0.6)',halo:'rgba(255,255,255,0.8)'}].forEach(lbl=>{
+    const[x,y]=polarW(e.angle,lbl.r);
+    const common={'x':x,'y':y,'text-anchor':'middle','dominant-baseline':'central','font-family':'DM Sans,sans-serif','font-size':'9','font-weight':'700','pointer-events':'none'};
+    // Halo (thick stroke behind text)
+    const h=svgEl(SVG_NS,'text',{...common,fill:lbl.halo,stroke:lbl.halo,'stroke-width':'3','stroke-linejoin':'round'});
+    h.textContent=lbl.t;svg.appendChild(h);
+    // Foreground text
+    const t=svgEl(SVG_NS,'text',{...common,fill:lbl.f});
+    t.textContent=lbl.t;svg.appendChild(t);
+  });
+});
+
+// Dyad labels (between sectors, outside)
+DYADS.forEach(d=>{
+  const a1=EMOTIONS[d.b[0]].angle,a2=EMOTIONS[d.b[1]].angle;
+  let mid=(a1+a2)/2;if(Math.abs(a1-a2)>180)mid=((a1+a2+360)/2)%360;
+  const[dx,dy]=polarW(mid,R3+18);
+  const t=svgEl(SVG_NS,'text',{x:dx,y:dy,'text-anchor':'middle','dominant-baseline':'central','font-family':'DM Sans','font-size':'8.5','font-weight':'600',fill:'rgba(0,0,0,0.35)','font-style':'italic','pointer-events':'none'});
+  t.textContent=d.name;svg.appendChild(t);
+});
+
+// BUBBLES
+const WRAP_CX=780,WRAP_CY=780,BUBBLE_RING_R=640,BUBBLE_W=215,BUBBLE_H_EST=130;
+const BUBBLE_START=90,BUBBLE_STEP=360/18;
+const bubbleEls=[],connectorLines=[];
+
+JOHN.forEach((item,i)=>{
+  const bubbleAngle=BUBBLE_START-i*BUBBLE_STEP;
+  const rad=bubbleAngle*Math.PI/180;
+  const bx=WRAP_CX+BUBBLE_RING_R*Math.cos(rad),by=WRAP_CY-BUBBLE_RING_R*Math.sin(rad);
+  const emo=emoMap[item.pri],color=emo.med;
+
+  const bubble=document.createElement('div');
+  bubble.className='bubble';
+  bubble.style.left=(bx-BUBBLE_W/2)+'px';
+  bubble.style.top=(by-BUBBLE_H_EST/2)+'px';
+  bubble.style.borderLeftColor=color;
+  bubble.style.borderLeftWidth='3px';
+
+  const dyadTag=item.dyad?`<div class="b-dyad">${item.dyad} dyad</div>`:'';
+  const emoLabels=item.emos.map(e=>e.l).join(' \u00b7 ');
+
+  bubble.innerHTML=`
+    <div class="b-head"><div class="b-num" style="background:${color}">${item.id}</div><span class="b-src">${item.src}</span></div>
+    <div class="b-quote">${item.q}</div>
+    <div class="b-emo">${emoLabels}</div>${dyadTag}
+    <div class="b-context"><div class="ctx-quote">${item.ctxQuote}</div></div>
+    <div class="b-hint">click to expand \u25be</div>`;
+  wrap.appendChild(bubble);bubbleEls.push(bubble);
+
+  const wScale=1040/700;
+  const dotWrapX=260+item.wx*wScale,dotWrapY=260+item.wy*wScale;
+  const line=svgEl(SVG_NS,'line',{x1:bx,y1:by,x2:dotWrapX,y2:dotWrapY,stroke:color,'stroke-width':'1','stroke-dasharray':'3 2',opacity:'0.35'});
+  connSvg.appendChild(line);connectorLines.push(line);
+  connSvg.appendChild(svgEl(SVG_NS,'circle',{cx:dotWrapX,cy:dotWrapY,r:'2',fill:color,opacity:'0.4'}));
+
+  bubble.addEventListener('click',e=>{
+    e.stopPropagation();const was=bubble.classList.contains('expanded');
+    bubbleEls.forEach((b,j)=>{b.classList.remove('expanded');connectorLines[j].setAttribute('opacity','0.35');connectorLines[j].setAttribute('stroke-width','1');});
+    if(!was){bubble.classList.add('expanded');line.setAttribute('opacity','0.7');line.setAttribute('stroke-width','2');}
+  });
+  bubble.addEventListener('mouseenter',()=>{line.setAttribute('opacity','0.7');line.setAttribute('stroke-width','2');});
+  bubble.addEventListener('mouseleave',()=>{if(!bubble.classList.contains('expanded')){line.setAttribute('opacity','0.35');line.setAttribute('stroke-width','1');}});
+});
+
+document.addEventListener('click',()=>{bubbleEls.forEach((b,j)=>{b.classList.remove('expanded');connectorLines[j].setAttribute('opacity','0.35');connectorLines[j].setAttribute('stroke-width','1');});});
+
+// Responsive scaling
+function scaleWheel(){
+  const outer=document.getElementById('scaleOuter');
+  const availW=window.innerWidth-32;
+  const z=Math.min(1,availW/1560);
+  outer.style.zoom=z;
+}
+scaleWheel();
+window.addEventListener('resize',scaleWheel);
+</script>
+</body>
+</html>
